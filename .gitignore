@@ -1,0 +1,31 @@
+# Sensitive configuration
+config.ini
+
+# Virtual environment
+venv/
+env/
+__pycache__/
+*.pyc
+
+# Database
+data/
+*.db
+*.db-journal
+
+# Logs
+*.log
+cron.log
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Backup files
+*.bak
+backup.sql

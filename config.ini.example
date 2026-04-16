@@ -1,0 +1,16 @@
+[IMAP]
+email = your.email@gmail.com
+password = your_app_password_here
+
+[DATABASE]
+path = data/emails.db
+
+[DASHBOARD]
+host = 0.0.0.0
+port = 8472
+
+[TRASH]
+priority_threshold = 2
+
+[NOTIFICATIONS]
+deadline_hours_before = 24

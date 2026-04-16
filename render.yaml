@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: email-dashboard
+    env: python
+    buildCommand: pip install -r requirements-render.txt
+    startCommand: gunicorn src.dashboard_render:app
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.0
+      - key: DASHBOARD_USER
+        sync: false
+      - key: DASHBOARD_PASSWORD
+        sync: false
+      - key: DATABASE_URL
+        sync: false

@@ -1,0 +1,60 @@
+#!/home/bhuvan/Documents/Projects/autoEmailReader/venv/bin/python3
+"""Flask dashboard for email viewer."""
+
+from flask import Flask, render_template, jsonify, request
+import configparser
+from pathlib import Path
+import sys
+
+sys.path.insert(0, str(Path(__file__).parent))
+from database import get_emails_for_dashboard, get_low_priority_emails, mark_as_read, log_trash
+
+app = Flask(__name__, 
+            template_folder=str(Path(__file__).parent.parent / 'templates'),
+            static_folder=str(Path(__file__).parent.parent / 'static'))
+
+# Load config
+config = configparser.ConfigParser()
+config.read(Path(__file__).parent.parent / 'config.ini')
+PORT = int(config['DASHBOARD']['port'])
+HOST = config['DASHBOARD']['host']
+
+
+@app.route('/')
+def index():
+    """Main dashboard page."""
+    emails = get_emails_for_dashboard()
+    low_priority = get_low_priority_emails()
+    return render_template('index.html', emails=emails, low_priority=low_priority)
+
+
+@app.route('/api/emails')
+def api_emails():
+    """API endpoint for emails."""
+    emails = get_emails_for_dashboard()
+    return jsonify(emails)
+
+
+@app.route('/api/mark_read/<email_id>', methods=['POST'])
+def api_mark_read(email_id):
+    """Mark email as read."""
+    try:
+        mark_as_read(email_id)
+        return jsonify({'success': True})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/trash/<email_id>', methods=['POST'])
+def api_trash(email_id):
+    """Move email to trash."""
+    try:
+        log_trash(email_id, "Manually trashed from dashboard", 0)
+        return jsonify({'success': True})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+if __name__ == '__main__':
+    print(f"Starting dashboard at http://{HOST}:{PORT}")
+    app.run(host=HOST, port=PORT, debug=False)

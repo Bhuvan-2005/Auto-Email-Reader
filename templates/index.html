@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Email Dashboard</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display: inline-block; vertical-align: middle; margin-right: 8px;">
+                    <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+                    <polyline points="22,6 12,13 2,6"></polyline>
+                </svg>
+                Email Dashboard
+            </h1>
+            <p class="subtitle">AI-analyzed emails sorted by priority</p>
+        </header>
+
+        <main>
+            <div class="tabs">
+                <button class="tab-btn active" data-tab="main">Main Emails</button>
+                <button class="tab-btn" data-tab="low-priority">Low Priority ({{ low_priority|length }})</button>
+            </div>
+
+            <div class="tab-content active" id="main-tab">
+            {% if emails %}
+                <div class="sort-controls">
+                    <label for="sort-select">Sort by:</label>
+                    <select id="sort-select">
+                        <option value="priority">Priority (High to Low)</option>
+                        <option value="date-new">Date (Newest First)</option>
+                        <option value="date-old">Date (Oldest First)</option>
+                    </select>
+                </div>
+                <div class="email-list">
+                    {% for email in emails %}
+                    <div class="email-card priority-{{ email.priority }}">
+                        <div class="email-header">
+                            <span class="priority-badge">Priority: {{ email.priority }}</span>
+                            <span class="sender">{{ email.sender }}</span>
+                            <span class="date">{{ email.received_at }}</span>
+                        </div>
+                        
+                        <h3 class="subject">{{ email.subject or '(No Subject)' }}</h3>
+                        
+                        <p class="summary">{{ email.summary }}</p>
+                        
+                        {% if email.deadlines %}
+                        <div class="deadlines">
+                            <strong>
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display: inline-block; vertical-align: middle; margin-right: 4px;">
+                                    <circle cx="12" cy="12" r="10"></circle>
+                                    <polyline points="12 6 12 12 16 14"></polyline>
+                                </svg>
+                                Deadlines:
+                            </strong>
+                            <ul>
+                                {% for deadline in email.deadlines %}
+                                <li>{{ deadline.date }}: {{ deadline.description }}</li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+                        {% endif %}
+                        
+                        <div class="actions">
+                            {% if not email.is_read %}
+                            <button class="btn-mark-read" data-id="{{ email.id }}">Mark as Read</button>
+                            {% else %}
+                            <span class="read-badge">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display: inline-block; vertical-align: middle; margin-right: 4px;">
+                                    <polyline points="20 6 9 17 4 12"></polyline>
+                                </svg>
+                                Read
+                            </span>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="empty-state">
+                    <p>No emails to display</p>
+                    <p class="hint">Emails will appear here after fetching and analysis</p>
+                </div>
+            {% endif %}
+            </div>
+
+            <div class="tab-content" id="low-priority-tab">
+            {% if low_priority %}
+                <div class="email-list">
+                        {% for email in low_priority %}
+                        <div class="email-card priority-{{ email.priority }} low-priority-card">
+                            <div class="email-header">
+                                <span class="priority-badge">Priority: {{ email.priority }}</span>
+                                <span class="sender">{{ email.sender }}</span>
+                                <span class="date">{{ email.received_at }}</span>
+                            </div>
+                            
+                            <h3 class="subject">{{ email.subject or '(No Subject)' }}</h3>
+                            
+                            <p class="summary">{{ email.summary }}</p>
+                            
+                            {% if email.reasoning %}
+                            <p class="reasoning"><strong>Why low priority:</strong> {{ email.reasoning }}</p>
+                            {% endif %}
+                            
+                            <div class="actions">
+                                <button class="btn-trash" data-id="{{ email.id }}">Confirm Trash</button>
+                                <button class="btn-keep" data-id="{{ email.id }}">Keep</button>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+            {% else %}
+                <div class="empty-state">
+                    <p>No low-priority emails</p>
+                    <p class="hint">Low-priority emails (≤2) will appear here for review</p>
+                </div>
+            {% endif %}
+            </div>
+        </main>
+    </div>
+
+    <script>
+        // Sort functionality
+        const emailList = document.querySelector('.email-list');
+        const sortSelect = document.getElementById('sort-select');
+        
+        sortSelect.addEventListener('change', function() {
+            const cards = Array.from(emailList.querySelectorAll('.email-card'));
+            const sortBy = this.value;
+            
+            cards.sort((a, b) => {
+                if (sortBy === 'priority') {
+                    const priorityA = parseInt(a.className.match(/priority-(\d+)/)[1]);
+                    const priorityB = parseInt(b.className.match(/priority-(\d+)/)[1]);
+                    return priorityB - priorityA; // High to low
+                } else if (sortBy === 'date-new') {
+                    const dateA = a.querySelector('.date').textContent;
+                    const dateB = b.querySelector('.date').textContent;
+                    return new Date(dateB) - new Date(dateA); // Newest first
+                } else if (sortBy === 'date-old') {
+                    const dateA = a.querySelector('.date').textContent;
+                    const dateB = b.querySelector('.date').textContent;
+                    return new Date(dateA) - new Date(dateB); // Oldest first
+                }
+            });
+            
+            // Re-append in sorted order
+            cards.forEach(card => emailList.appendChild(card));
+        });
+        
+        // Mark as read functionality
+        document.querySelectorAll('.btn-mark-read').forEach(btn => {
+            btn.addEventListener('click', async function() {
+                const emailId = this.dataset.id;
+                try {
+                    const response = await fetch(`/api/mark_read/${emailId}`, {
+                        method: 'POST'
+                    });
+                    if (response.ok) {
+                        this.parentElement.innerHTML = '<span class="read-badge"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display: inline-block; vertical-align: middle; margin-right: 4px;"><polyline points="20 6 9 17 4 12"></polyline></svg>Read</span>';
+                    }
+                } catch (error) {
+                    console.error('Error marking as read:', error);
+                }
+            });
+        });
+
+        // Trash button functionality
+        document.querySelectorAll('.btn-trash').forEach(btn => {
+            btn.addEventListener('click', async function() {
+                const emailId = this.dataset.id;
+                const card = this.closest('.email-card');
+                try {
+                    const response = await fetch(`/api/trash/${emailId}`, {
+                        method: 'POST'
+                    });
+                    if (response.ok) {
+                        card.style.opacity = '0.5';
+                        card.style.transform = 'translateX(-100%)';
+                        setTimeout(() => card.remove(), 300);
+                    }
+                } catch (error) {
+                    console.error('Error trashing email:', error);
+                }
+            });
+        });
+
+        // Keep button functionality
+        document.querySelectorAll('.btn-keep').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const card = this.closest('.email-card');
+                card.style.opacity = '0.5';
+                setTimeout(() => card.remove(), 300);
+            });
+        });
+
+        // Tab switching
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const targetTab = this.dataset.tab;
+                
+                // Update button states
+                document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+                this.classList.add('active');
+                
+                // Update tab content
+                document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+                document.getElementById(targetTab + '-tab').classList.add('active');
+            });
+        });
+
+        // Auto-refresh every 2 minutes
+        setTimeout(() => location.reload(), 120000);
+    </script>
+</body>
+</html>
