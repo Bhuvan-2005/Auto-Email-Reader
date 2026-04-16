@@ -84,9 +84,33 @@ def health():
     return jsonify({'status': 'ok'})
 
 
+def keep_alive():
+    """Background thread to ping self every 10 minutes."""
+    render_url = os.environ.get('RENDER_EXTERNAL_URL')
+    if not render_url:
+        return  # Only run on Render
+    
+    time.sleep(300)  # Wait 5 min after startup
+    
+    while True:
+        try:
+            requests.get(f"{render_url}/health", timeout=10)
+            print(f"Self-ping successful at {time.strftime('%Y-%m-%d %H:%M:%S')}")
+        except Exception as e:
+            print(f"Self-ping failed: {e}")
+        
+        time.sleep(600)  # Ping every 10 minutes
+
+
 if __name__ == '__main__':
     # Initialize database on startup
     init_database()
+    
+    # Start keep-alive thread if on Render
+    if os.environ.get('RENDER_EXTERNAL_URL'):
+        ping_thread = threading.Thread(target=keep_alive, daemon=True)
+        ping_thread.start()
+        print("Self-ping thread started")
     
     PORT = int(os.environ.get('PORT', 8472))
     app.run(host='0.0.0.0', port=PORT, debug=False)
